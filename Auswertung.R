@@ -1,14 +1,14 @@
 load("data.RData")
 
 ##### load the predictions #################################################
-setwd(paste0(getwd(), "/GS_O_new_model_prediction"))
+setwd(paste0(getwd(), "/new_model_prediction_basis_h2h"))
 temp <- data.frame(matrix(NA, 1, 8))
 colnames(temp) <- c("true_outcome", "pred_outcome1", "pred_outcome2", "pred_outcome3", 
                           "pred_outcome4", "pred_outcome5", "pred_outcome6", "pred_outcome7")
 
-for(i in 1:60){
-#for(i in 1:71){
-  load(paste0("GS_O_new_model_prediction_", i, ".RData"))
+#for(i in 1:60){
+for(i in 1:71){
+  load(paste0("new_model_prediction_basis_h2h_", i, ".RData"))
   temp <- rbind(temp, prediction)
 }
 prediction <- temp[-1,]
@@ -17,9 +17,9 @@ rm(temp, i)
 #####
 
 ## tourney_level hinzufuegen 
-data <- data[data$tourney_level %in% c("O", "G"),]
-#tourney_levels <- data[data$tourney_date >= max(data$tourney_date) - 365, "tourney_level"]
-tourney_levels <- data[data$tourney_date >= as.Date("2011-01-01"), "tourney_level"]
+#data <- data[data$tourney_level %in% c("O", "G"),]
+#tourney_levels <- data[data$tourney_date >= as.Date("2011-01-01"), "tourney_level"]
+tourney_levels <- data[data$tourney_date >= max(data$tourney_date) - 365, "tourney_level"]
 prediction <- cbind(prediction, tourney_levels)
 rm(tourney_levels)
 
@@ -67,7 +67,8 @@ apply(pred_table, 1, min)
 
 ################################################################################
 
-levels <- unique(prediction$tourney_levels)
+levels <- c("G", "O", "A", "C", "D", "F", "M")
+# levels <- c("G", "O")
 
 for(lvl in levels){
   
