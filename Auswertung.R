@@ -1,14 +1,14 @@
 load("data.RData")
 
 ##### load the predictions #################################################
-setwd(paste0(getwd(), "/new_model_prediction_basis_h2h"))
+setwd(paste0(getwd(), "/new_model_prediction_basis_staerke_nach_untergrund"))
 temp <- data.frame(matrix(NA, 1, 8))
 colnames(temp) <- c("true_outcome", "pred_outcome1", "pred_outcome2", "pred_outcome3", 
                           "pred_outcome4", "pred_outcome5", "pred_outcome6", "pred_outcome7")
 
 #for(i in 1:60){
 for(i in 1:71){
-  load(paste0("new_model_prediction_basis_h2h_", i, ".RData"))
+  load(paste0("new_model_prediction_basis_staerke_nach_untergrund_", i, ".RData"))
   temp <- rbind(temp, prediction)
 }
 prediction <- temp[-1,]
