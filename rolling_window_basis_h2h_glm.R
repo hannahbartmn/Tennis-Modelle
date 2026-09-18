@@ -393,7 +393,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   X_pred <- cbind(X_beta_pred, X_1_pred-X_2_pred)
   colnames(X_pred)[1] <- "home"
   
-  X_pred <- as.matrix(X_pred)
+  X_pred <- data.frame(X_pred)
   
   index <- which(!(colnames(X_pred) %in%  X_6_years_colnames))
   if(length(index) > 0){
