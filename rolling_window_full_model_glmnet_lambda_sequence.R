@@ -17,7 +17,7 @@ level_weight <- function(lv){
 ## Pakete
 
 library(tidyverse)
-#library(glmnet)
+library(glmnet)
 
 
 ## Daten
@@ -42,12 +42,15 @@ all_tourney_dates <- unique(data[data$tourney_id %in% all_tourneys, "tourney_dat
 
 ## Modellvorbereitung
 
-# j <- 17
-j <- as.integer(Sys.getenv("PBS_ARRAYID"))
+# j <- 56
+# j <- as.integer(Sys.getenv("PBS_ARRAYID"))
 
 # J <- c(42:45, 47, 49:56, 58, 60:61)
 
-# for(j in 1:length(all_tourney_dates)){
+lambda_seq <- seq(1e-10, 1e-3, length.out = 150)
+
+for(j in 1:length(all_tourney_dates)){
+  # for(j in J){
   cat(j, "at", paste0(Sys.time()), "\n")
   # Datum des j-ten Turniers 
   temp_date <- all_tourney_dates[j]
@@ -95,7 +98,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   temp_subset_4_years[temp_subset_4_years$opponent_name %in% outlier, "opponent_id"] <- 400000
   temp_subset_4_years[temp_subset_4_years$opponent_name %in% outlier, "opponent_name"] <- "Outlier"
   
-
+  
   ## alle einzigartigen Spieler  
   player_info_4_years <- data.frame(id = temp_subset_4_years$player_id, 
                                     name = temp_subset_4_years$player_name)
@@ -132,14 +135,14 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   # Outlier SPalten entfernen
   outlier_col <- c(which(colnames(X) == "player_idOutlier:surfaceCarpet"), 
-    which(colnames(X) == "player_idOutlier:surfaceClay"),
-    which(colnames(X) == "player_idOutlier:surfaceGrass"),
-    which(colnames(X) == "player_idOutlier:surfaceHard")
+                   which(colnames(X) == "player_idOutlier:surfaceClay"),
+                   which(colnames(X) == "player_idOutlier:surfaceGrass"),
+                   which(colnames(X) == "player_idOutlier:surfaceHard")
   )
   
   X <- X[,-outlier_col]
   
-
+  
   # Entferne Nullspalten 
   index <- apply(X, 2, function(x) length(table(x)))
   index <- unname(which(index == 1))
@@ -147,10 +150,8 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
     X <- X[,-index]
   }
   
-  X <- data.frame(X)
-  
   # in matrix umwandeln fuer glmnet
-  # X <- as.matrix(X)
+  X <- as.matrix(X)
   
   X_4_years_colnames <- colnames(X)
   
@@ -196,24 +197,24 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   X_pred <- cbind(X_beta_pred, X_1_pred-X_2_pred)
   colnames(X_pred)[1] <- "home"
   
-  X_pred <- data.frame(X_pred)
+  # X_pred <- data.frame(X_pred)
   
   index <- which(!(colnames(X_pred) %in%  X_4_years_colnames))
   if(length(index) > 0){
     X_pred <- X_pred[,-index]
   }
   
-  # X_pred <- as.matrix(X_pred)
+  X_pred <- as.matrix(X_pred)
   
   ######
   
   ## penality.factor vorbereiten
-  # sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
-  #                                 any("H2H" %in% colnames(X)),
-  #                                 any("H2H_surface" %in% colnames(X))))
-  # 
-  # penality_vector <- c(rep(0, sum_excluded_variables),
-  #                      rep(1, ncol(X) - sum_excluded_variables))
+  sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
+                                  any("H2H" %in% colnames(X)),
+                                  any("H2H_surface" %in% colnames(X))))
+  
+  penality_vector <- c(rep(0, sum_excluded_variables),
+                       rep(1, ncol(X) - sum_excluded_variables))
   
   
   ## weights bestimmen
@@ -232,7 +233,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
      X_beta, X_1, X_2, outlier_col, index, outlier, temp_subset_4_years, w_level_4_years, 
      w_time_4_years_1_halfperiod, w_time_4_years_2_halfperiod, w_time_4_years_3_halfperiod,
      X_1_pred, X_2_pred, X_beta_pred, not_listed_opponent, not_listed_player, 
-     X_4_years_colnames, player_info_4_years)
+     X_4_years_colnames, player_info_4_years, sum_excluded_variables)
   
   gc()
   
@@ -240,37 +241,73 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   ## Modelle mit 4 Jahren Trainingsdaten
   
-  model1 <- glm(y ~ -1 + ., data = X, family = binomial)
-  pred_outcome1 <- predict(model1, newdata = X_pred, type = 'response')
+  model1 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+  )
+  pred_outcome1 <- unname(predict(object = model1, newx = X_pred, type = 'response'))
   rm(model1)
   
   gc()
   
-  model2 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_2)
-  pred_outcome2 <- predict(model2, newdata = X_pred, type = 'response')
+  model2 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   weights = w_2,
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+                   
+  )
+  pred_outcome2 <- unname(predict(model2, newx = X_pred, type = 'response'))
   rm(model2, w_2)
   
   gc()
   
-  model3 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_3)
-  pred_outcome3 <- predict(model3, newdata = X_pred, type = 'response')
+  model3 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   weights = w_3,
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+  )
+  pred_outcome3 <- unname(predict(model3, newx = X_pred, type = 'response'))
   rm(model3, w_3)
   
   gc()
   
-  model4 <- model4 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_4)
-  pred_outcome4 <- predict(model4, newdata = X_pred, type = 'response')
-  rm(model4, w_4, X, y, X_pred)
+  model4 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   weights = w_4,
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+  )
+  pred_outcome4 <- unname(predict(model4, newx = X_pred, type = 'response'))
+  rm(model4, w_4, X, y)
   
   gc()
-
+  
   
   
   #####  models with 6 years training data #######################################
   
   ## alle Turniere 6 Jahre vor dem zu schaetzenden Turnier auswaehlen
   temp_id_6_years <- data[(data$tourney_date < temp_date &
-                            data$tourney_date > temp_date - 365*6), 1] 
+                             data$tourney_date > temp_date - 365*6), 1] 
   temp_subset_6_years <- data[data$tourney_id %in% temp_id_6_years, ]
   na_surface <- is.na(temp_subset_6_years$surface)
   temp_subset_6_years <- temp_subset_6_years[!na_surface,]
@@ -356,10 +393,8 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
     X <- X[,-index]
   } 
   
-  X <- data.frame(X)
-  
   # in matrix umwandeln fuer glmnet
-  # X <- as.matrix(X)
+  X <- as.matrix(X)
   
   X_6_years_colnames <- colnames(X)
   
@@ -410,19 +445,17 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
     X_pred <- X_pred[,-index]
   }
   
-  X_pred <- data.frame(X_pred)
-
-  # X_pred <- as.matrix(X_pred)
+  X_pred <- as.matrix(X_pred)
   
   ######
   
   ## penality.factor vorbereiten
-  # sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
-  #                                 any("H2H" %in% colnames(X)),
-  #                                 any("H2H_surface" %in% colnames(X))))
-  # 
-  # penality_vector <- c(rep(0, sum_excluded_variables),
-  #                      rep(1, ncol(X) - sum_excluded_variables))
+  sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
+                                  any("H2H" %in% colnames(X)),
+                                  any("H2H_surface" %in% colnames(X))))
+  
+  penality_vector <- c(rep(0, sum_excluded_variables),
+                       rep(1, ncol(X) - sum_excluded_variables))
   
   ## weights bestimmen
   w_level_6_years <- sapply(temp_subset_6_years$tourney_level, level_weight)
@@ -440,7 +473,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
      X_beta, X_1, X_2, outlier_col, index, outlier, temp_subset_6_years, w_level_6_years, 
      w_time_6_years_1_halfperiod, w_time_6_years_3_halfperiod, w_time_6_years_5_halfperiod,
      X_1_pred, X_2_pred, X_beta_pred, not_listed_opponent, not_listed_player, 
-     X_6_years_colnames, player_info_6_years)
+     X_6_years_colnames, player_info_6_years, sum_excluded_variables)
   
   gc()
   
@@ -448,50 +481,84 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   ## Modelle fuer 6 Jahre Trainingsdaten
   
-  model5 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_5)
-  pred_outcome5 <- predict(model5, newdata = X_pred, type = 'response')
+  
+  model5 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   weights = w_5,
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+  )
+  pred_outcome5 <- unname(predict(model5, newx = X_pred, type = 'response'))
   rm(w_5, model5)
   
   gc()
   
-  model6 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_6)
-  pred_outcome6 <- predict(model6, newdata = X_pred, type = 'response')
+  model6 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   weights = w_6,
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+  )
+  pred_outcome6 <- unname(predict(model6, newx = X_pred, type = 'response'))
   rm(w_6, model6)
   
   gc()
   
-  model7 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_7)
-  pred_outcome7 <- predict(model7, newdata = X_pred, type = 'response')
+  model7 <- glmnet(x = X,
+                   y = y,
+                   intercept = FALSE,
+                   family = binomial(),
+                   weights = w_7,
+                   lambda = lambda_seq,
+                   standardize = FALSE,
+                   alpha = 0,
+                   penality.factor = penality_vector
+  )
+  pred_outcome7 <- unname(predict(model7, newx = X_pred, type = 'response'))
   rm(w_7, model7, X, y)
   
   gc()
   
   ################################################################################
   
-  prediction <- data.frame(true_outcome = true_outcome,
-                           pred_outcome1 = pred_outcome1,
-                           pred_outcome2 = pred_outcome2,
-                           pred_outcome3 = pred_outcome3,
-                           pred_outcome4 = pred_outcome4,
-                           pred_outcome5 = pred_outcome5,
-                           pred_outcome6 = pred_outcome6,
-                           pred_outcome7 = pred_outcome7)
+  ## erstelle leeres Array (Turnier, lambda, Modell)
+  prediction <- array(NA, dim = c(nrow(X_pred), length(lambda_seq), 7))
   
-  save(prediction, file = paste0("full_model_glm_", j, ".RData")) #id hier hinzufuegen
+  prediction[,,1] <- pred_outcome1
+  prediction[,,2] <- pred_outcome2
+  prediction[,,3] <- pred_outcome3
+  prediction[,,4] <- pred_outcome4
+  prediction[,,5] <- pred_outcome5
+  prediction[,,6] <- pred_outcome6
+  prediction[,,7] <- pred_outcome7
+  
+  save(prediction, file = paste0("prediction_full_model_glmnet_lambda_sequence_", j, ".RData")) #id hier hinzufuegen
   
   gc()
-# }
-  
-  
-  
-  
-  
-  
-  
-  
-  ##############################################################################
+}
 
 
 
-  
-  
+
+
+
+
+
+##############################################################################
+
+
+
+
+
+L <- list()
+
+
+L[[i]] <- df
