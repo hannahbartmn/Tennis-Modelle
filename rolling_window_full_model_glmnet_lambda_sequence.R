@@ -558,7 +558,3 @@ for(j in 1:length(all_tourney_dates)){
 
 
 
-L <- list()
-
-
-L[[i]] <- df
