@@ -42,11 +42,10 @@ all_tourney_dates <- unique(data[data$tourney_id %in% all_tourneys, "tourney_dat
 
 ## Modellvorbereitung
 
-# j <- 10
-# j <- as.integer(Sys.getenv("PBS_ARRAYID"))
-J <- c(42, 44, 47, 53, 56)
 
-for(j in J){
+j <- as.integer(Sys.getenv("PBS_ARRAYID"))
+
+#for(j in J){
   
   cat(j, "at", paste0(Sys.time()), "\n")
 
@@ -229,7 +228,7 @@ for(j in J){
                    y = y,
                    intercept = FALSE,
                    family = binomial(),
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -245,7 +244,7 @@ for(j in J){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_2,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -260,7 +259,7 @@ for(j in J){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_3,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -275,7 +274,7 @@ for(j in J){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_4,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -458,7 +457,7 @@ for(j in J){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_5,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -473,7 +472,7 @@ for(j in J){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_6,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -488,7 +487,7 @@ for(j in J){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_7,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -512,7 +511,7 @@ for(j in J){
   save(prediction, file = paste0("old_model_prediction_", j, ".RData")) #id hier hinzufuegen
   
   gc()
-}
+#}
   
   
   

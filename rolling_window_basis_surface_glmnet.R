@@ -43,11 +43,11 @@ all_tourney_dates <- unique(data[data$tourney_id %in% all_tourneys, "tourney_dat
 ## Modellvorbereitung
 
 # j <- 56
-# j <- as.integer(Sys.getenv("PBS_ARRAYID"))
+j <- as.integer(Sys.getenv("PBS_ARRAYID"))
 
 # J <- c(42:45, 47, 49:56, 58, 60:61)
 
-for(j in 1:length(all_tourney_dates)){
+#for(j in 1:length(all_tourney_dates)){
 # for(j in J){
   cat(j, "at", paste0(Sys.time()), "\n")
   # Datum des j-ten Turniers 
@@ -243,7 +243,7 @@ for(j in 1:length(all_tourney_dates)){
                    y = y,
                    intercept = FALSE,
                    family = binomial(),
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -262,7 +262,7 @@ for(j in 1:length(all_tourney_dates)){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_2,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -278,7 +278,7 @@ for(j in 1:length(all_tourney_dates)){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_3,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -293,7 +293,7 @@ for(j in 1:length(all_tourney_dates)){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_4,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -489,7 +489,7 @@ for(j in 1:length(all_tourney_dates)){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_5,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -504,7 +504,7 @@ for(j in 1:length(all_tourney_dates)){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_6,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -519,7 +519,7 @@ for(j in 1:length(all_tourney_dates)){
                    intercept = FALSE,
                    family = binomial(),
                    weights = w_7,
-                   lambda = 1e-5,
+                   lambda = 1e-15,
                    standardize = FALSE,
                    alpha = 0,
                    penality.factor = penality_vector
@@ -543,7 +543,7 @@ for(j in 1:length(all_tourney_dates)){
   save(prediction, file = paste0("new_model_prediction_basis_staerke_nach_untergrund_", j, ".RData")) #id hier hinzufuegen
   
   gc()
-}
+#}
   
   
   

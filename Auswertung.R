@@ -5,14 +5,14 @@ load("data.RData")
 root <- find_root(is_git_root)
 
 ##### load the predictions #################################################
-setwd(paste0(root, "/prediction_full_model_glm"))
+setwd(paste0(root, "/prediction_basis_glm"))
 temp <- data.frame(matrix(NA, 1, 8))
 colnames(temp) <- c("true_outcome", "pred_outcome1", "pred_outcome2", "pred_outcome3", 
                           "pred_outcome4", "pred_outcome5", "pred_outcome6", "pred_outcome7")
 
 #for(i in 1:60){
 for(i in 1:71){
-  load(paste0("full_model_glm_", i, ".RData"))
+  load(paste0("original_model_prediction_", i, ".RData"))
   temp <- rbind(temp, prediction)
 }
 prediction <- temp[-1,]
@@ -68,6 +68,43 @@ apply(pred_table, 1, max)
 apply(pred_table, 1, min)
 
 #lvl <- levels[1]
+
+################################################################################
+
+prediction_GO <- prediction[prediction$tourney_levels %in% c("G", "O"),]
+
+pred_table_GO <- matrix(NA, ncol = 7, nrow = 3)
+pred_table_GO <- data.frame(pred_table_GO)
+colnames(pred_table_GO) <- c("model1", "model2", "model3" ,"model4" ,"model5" ,"model6" ,"model7")
+rownames(pred_table_GO) <- c("Class._Rate", "Likelihood", "Brier_Score")
+
+n <- nrow(prediction_GO)
+true_outcome <- prediction_GO$true_outcome
+
+#classification rate
+for(i in 1:7){
+  pred_vec <- ifelse(prediction_GO[, i+1] > 0.5, 1, 0)
+  pred_table_GO[1, i] <- mean(true_outcome == pred_vec)
+}
+
+#predictive bernoulli likelihood 
+for(i in 1:7){
+  pred_vec <- prediction_GO[, i + 1]
+  pred_table_GO[2, i] <- mean(pred_vec^true_outcome * (1 - pred_vec)^(1 - true_outcome))
+}
+
+#Brier Score
+for(i in 1:7){
+  pred_vec <- prediction_GO[, i + 1]
+  pred_table_GO[3, i] <- mean((pred_vec - true_outcome)^2)
+}
+
+#build latex table
+xtable(t(pred_table_GO), digits = 4)
+
+apply(pred_table_GO, 1, max)
+apply(pred_table_GO, 1, min)
+
 
 ################################################################################
 
@@ -154,3 +191,39 @@ for(lvl in levels){
 # 
 # print(tab, include.rownames = FALSE)
 # 
+
+################################################################################
+
+setwd(paste0(root, "/prediction_full_model_glmnet_lambda_sequence"))
+library(abind)
+
+##### load predictions #####
+
+load("prediction_full_model_glmnet_lambda_sequence_1.RData")
+temp <- prediction
+for(i in 2:42){
+  load(paste0("prediction_full_model_glmnet_lambda_sequence_", i, ".RData"))
+  temp <- abind(temp, prediction, along = 1)
+}
+prediction <- temp
+rm(temp, i)
+dim(prediction)
+
+
+##### compare predictive bernoulli likelihood for different lambdas #####
+
+lambda_seq <- seq(1e-3, 1e-10, length.out = 150)
+
+# look at model2
+prediction2 <- data.frame(prediction[,,2])
+
+# true_outcome
+true_outcome <- data[data$tourney_date >= max(data$tourney_date) - 365, "win"]
+true_outcome <- true_outcome[1:10859]
+
+pred_likelihood <- apply(prediction2, 2, function(x) mean(x^true_outcome * (1 - x)^(1 - true_outcome)))
+# Ordnung der lambda von gross zu klein
+
+plot(lambda_seq, pred_likelihood)
+
+
