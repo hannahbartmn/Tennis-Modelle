@@ -5,14 +5,14 @@ load("data.RData")
 root <- find_root(is_git_root)
 
 ##### load the predictions #################################################
-setwd(paste0(root, "/prediction_basis_glm"))
+setwd(paste0(root, "/prediction_full_model_glmnet/lambda_1e-15"))
 temp <- data.frame(matrix(NA, 1, 8))
 colnames(temp) <- c("true_outcome", "pred_outcome1", "pred_outcome2", "pred_outcome3", 
                           "pred_outcome4", "pred_outcome5", "pred_outcome6", "pred_outcome7")
 
 #for(i in 1:60){
 for(i in 1:71){
-  load(paste0("original_model_prediction_", i, ".RData"))
+  load(paste0("new_model_prediction_", i, ".RData"))
   temp <- rbind(temp, prediction)
 }
 prediction <- temp[-1,]
@@ -201,7 +201,7 @@ library(abind)
 
 load("prediction_full_model_glmnet_lambda_sequence_1.RData")
 temp <- prediction
-for(i in 2:42){
+for(i in 2:71){
   load(paste0("prediction_full_model_glmnet_lambda_sequence_", i, ".RData"))
   temp <- abind(temp, prediction, along = 1)
 }
@@ -219,11 +219,25 @@ prediction2 <- data.frame(prediction[,,2])
 
 # true_outcome
 true_outcome <- data[data$tourney_date >= max(data$tourney_date) - 365, "win"]
-true_outcome <- true_outcome[1:10859]
 
 pred_likelihood <- apply(prediction2, 2, function(x) mean(x^true_outcome * (1 - x)^(1 - true_outcome)))
-# Ordnung der lambda von gross zu klein
+# Ordnung der lambda von gross zu klein, also 1e-3 ist [1] und 1e-10 ist [150]
 
-plot(lambda_seq, pred_likelihood)
+plot(lambda_seq, pred_likelihood,
+     xlab = "lambda", ylab = "Predictive Bernoulli Likelihood",
+     main = "Full Model (glmnet) - model2")
 
+
+# look at model5
+prediction5 <- data.frame(prediction[,,5])
+
+# true_outcome
+# true_outcome <- data[data$tourney_date >= max(data$tourney_date) - 365, "win"]
+
+pred_likelihood <- apply(prediction5, 2, function(x) mean(x^true_outcome * (1 - x)^(1 - true_outcome)))
+# Ordnung der lambda von gross zu klein, also 1e-3 ist [1] und 1e-10 ist [150]
+
+plot(lambda_seq, pred_likelihood,
+     xlab = "lambda", ylab = "Predictive Bernoulli Likelihood",
+     main = "Full Model (glmnet) - model5")
 
