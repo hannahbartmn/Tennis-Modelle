@@ -509,6 +509,9 @@ model5_glmnet <- glmnet(x = X,
 )
 Sys.time() - t
 
+save(model5_glmnet, model5_glm, file = "models.RData")
+
+
 # pred_outcome5 <- unname(predict(model5, newx = X_pred, type = 'response'))
 # rm(w_5, model5)
 
