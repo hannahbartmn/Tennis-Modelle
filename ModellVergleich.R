@@ -493,11 +493,11 @@ gc()
 ## Modelle fuer 6 Jahre Trainingsdaten
 
 t <- Sys.time()
-model5_glm <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_5)
+model5_glm <- glm(y ~ -1 + ., data = X_glm, family = binomial, weights = w_5)
 Sys.time() - t
 
 t <- Sys.time()
-model5_glmnet <- glmnet(x = X,
+model5_glmnet <- glmnet(x = X_glmnet,
                  y = y,
                  intercept = FALSE,
                  family = binomial(),
