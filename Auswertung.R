@@ -244,8 +244,6 @@ plot(lambda_seq, pred_likelihood,
 
 ################################################################################
 
-load("models.RData")
-
 str(model5_glm$coefficients)
 str(model5_glmnet$beta)
 
