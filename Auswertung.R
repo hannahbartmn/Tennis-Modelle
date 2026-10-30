@@ -241,3 +241,23 @@ plot(lambda_seq, pred_likelihood,
      xlab = "lambda", ylab = "Predictive Bernoulli Likelihood",
      main = "Full Model (glmnet) - model5")
 
+
+################################################################################
+
+load("models.RData")
+
+str(model5_glm$coefficients)
+str(model5_glmnet$beta)
+
+model5_glm$coefficients
+model5_glmnet$beta@Dimnames[[1]][1:10]
+
+coef_glm <- data.frame(name = names(model5_glm$coefficients), coef_glm = as.vector(model5_glm$coefficients))
+coef_glmnet <- data.frame(name = model5_glmnet$beta@Dimnames[[1]], coef_glmnet = as.vector(model5_glmnet$beta)) 
+
+coef_glm$name <- gsub("`", "", coef_glm$name)
+
+coef <- merge(coef_glm, coef_glmnet)
+
+
+

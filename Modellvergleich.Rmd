@@ -1,0 +1,23 @@
+---
+title: "Modellvergleich"
+output: pdf_document
+---
+
+```{r echo=FALSE}
+
+options(width = 300)
+
+setwd("C:/Users/bartm/Documents/GitHub/Tennis-Modelle")
+
+load("models.RData")
+
+coef_glm <- data.frame(name = names(model5_glm$coefficients), coef_glm = as.vector(model5_glm$coefficients))
+coef_glmnet <- data.frame(name = model5_glmnet$beta@Dimnames[[1]], coef_glmnet = as.vector(as.matrix(model5_glmnet$beta))) 
+
+coef_glm$name <- gsub("`", "", coef_glm$name)
+
+coef <- merge(coef_glm, coef_glmnet)
+
+print(coef)
+```
+
