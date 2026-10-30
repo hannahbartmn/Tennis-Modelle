@@ -259,5 +259,6 @@ coef_glm$name <- gsub("`", "", coef_glm$name)
 
 coef <- merge(coef_glm, coef_glmnet)
 
+View(coef)
 
 

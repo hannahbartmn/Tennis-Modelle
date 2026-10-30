@@ -49,11 +49,8 @@ all_tourney_dates <- unique(data[data$tourney_id %in% all_tourneys, "tourney_dat
 j <- 3
 # j <- as.integer(Sys.getenv("PBS_ARRAYID"))
 
-# J <- c(42:45, 47, 49:56, 58, 60:61)
-
 #for(j in 1:length(all_tourney_dates)){
-# for(j in J){
-cat(j, "at", paste0(Sys.time()), "\n")
+
 # Datum des j-ten Turniers 
 temp_date <- all_tourney_dates[j]
 
@@ -314,7 +311,7 @@ data$date_difference <- as.numeric(temp_date - data$tourney_date)
 
 ## alle Turniere 6 Jahre vor dem zu schaetzenden Turnier auswaehlen
 temp_id_6_years <- data[(data$tourney_date < temp_date &
-                           data$tourney_date > temp_date - 365*6), 1] 
+                           data$tourney_date > temp_date - 365*0.5), 1] 
 temp_subset_6_years <- data[data$tourney_id %in% temp_id_6_years, ]
 na_surface <- is.na(temp_subset_6_years$surface)
 temp_subset_6_years <- temp_subset_6_years[!na_surface,]
@@ -400,65 +397,67 @@ if(length(index) > 0){
   X <- X[,-index]
 } 
 
-X_glm <- X
+X <- scale(X)
+
+X_glm <- as.data.frame(X)
 
 # in matrix umwandeln fuer glmnet
 X_glmnet <- as.matrix(X)
 
 X_6_years_colnames <- colnames(X)
 
-######
-
-## Vorbereitung von Schaetzungen mit 6 Jahren Trainingsdaten
-
-pred_subset <- data[data$tourney_date == all_tourney_dates[j],]
-
-# true outcome abspeichern
-true_outcome <- as.numeric(pred_subset$win)
-
-# Spieler ohne Parameterschaetzung werden mit Outlier Parameter geschaetzt
-not_listed_player <- which(!(pred_subset$player_id %in% player_info_6_years$id))
-not_listed_player <- pred_subset$player_id[not_listed_player]
-
-if(length(not_listed_player) > 0){
-  pred_subset[pred_subset$player_id %in% not_listed_player, "player_name"] <- "Outlier" 
-  pred_subset[pred_subset$player_id %in% not_listed_player, "player_id"] <- 400000 
-}
-
-not_listed_opponent <- which(!(pred_subset$opponent_id %in% player_info_6_years$id))
-not_listed_opponent <- pred_subset$opponent_id[not_listed_opponent]
-
-if(length(not_listed_opponent) > 0){
-  pred_subset[pred_subset$opponent_id %in% not_listed_opponent, "opponent_name"] <- "Outlier"
-  pred_subset[pred_subset$opponent_id %in% not_listed_opponent, "opponent_id"] <- 400000 
-}
-
-pred_subset$player_id <- factor(pred_subset$player_id, 
-                                levels = player_info_6_years$id, 
-                                labels = player_info_6_years$name)
-pred_subset$player_id <- relevel(pred_subset$player_id, "Outlier")
-pred_subset$opponent_id <- factor(pred_subset$opponent_id, 
-                                  levels = player_info_6_years$id, 
-                                  labels = player_info_6_years$name)
-pred_subset$opponent_id <-  relevel(pred_subset$opponent_id, "Outlier")
-
-## Designmatrix aufstellen
-X_1_pred <- model.matrix(~ -1 + player_id : surface, data = pred_subset)
-X_2_pred <- model.matrix(~ -1 + opponent_id : surface, data = pred_subset) 
-X_beta_pred <- pred_subset[, c("home_tourney", "H2H", "H2H_surface")]
-X_pred <- cbind(X_beta_pred, X_1_pred-X_2_pred)
-colnames(X_pred)[1] <- "home"
-
-index <- which(!(colnames(X_pred) %in%  X_6_years_colnames))
-if(length(index) > 0){
-  X_pred <- X_pred[,-index]
-}
-
-X_pred_glm <- X_pred
-
-X_pred_glmnet <- as.matrix(X_pred)
-
-######
+# ######
+# 
+# ## Vorbereitung von Schaetzungen mit 6 Jahren Trainingsdaten
+# 
+# pred_subset <- data[data$tourney_date == all_tourney_dates[j],]
+# 
+# # true outcome abspeichern
+# true_outcome <- as.numeric(pred_subset$win)
+# 
+# # Spieler ohne Parameterschaetzung werden mit Outlier Parameter geschaetzt
+# not_listed_player <- which(!(pred_subset$player_id %in% player_info_6_years$id))
+# not_listed_player <- pred_subset$player_id[not_listed_player]
+# 
+# if(length(not_listed_player) > 0){
+#   pred_subset[pred_subset$player_id %in% not_listed_player, "player_name"] <- "Outlier" 
+#   pred_subset[pred_subset$player_id %in% not_listed_player, "player_id"] <- 400000 
+# }
+# 
+# not_listed_opponent <- which(!(pred_subset$opponent_id %in% player_info_6_years$id))
+# not_listed_opponent <- pred_subset$opponent_id[not_listed_opponent]
+# 
+# if(length(not_listed_opponent) > 0){
+#   pred_subset[pred_subset$opponent_id %in% not_listed_opponent, "opponent_name"] <- "Outlier"
+#   pred_subset[pred_subset$opponent_id %in% not_listed_opponent, "opponent_id"] <- 400000 
+# }
+# 
+# pred_subset$player_id <- factor(pred_subset$player_id, 
+#                                 levels = player_info_6_years$id, 
+#                                 labels = player_info_6_years$name)
+# pred_subset$player_id <- relevel(pred_subset$player_id, "Outlier")
+# pred_subset$opponent_id <- factor(pred_subset$opponent_id, 
+#                                   levels = player_info_6_years$id, 
+#                                   labels = player_info_6_years$name)
+# pred_subset$opponent_id <-  relevel(pred_subset$opponent_id, "Outlier")
+# 
+# ## Designmatrix aufstellen
+# X_1_pred <- model.matrix(~ -1 + player_id : surface, data = pred_subset)
+# X_2_pred <- model.matrix(~ -1 + opponent_id : surface, data = pred_subset) 
+# X_beta_pred <- pred_subset[, c("home_tourney", "H2H", "H2H_surface")]
+# X_pred <- cbind(X_beta_pred, X_1_pred-X_2_pred)
+# colnames(X_pred)[1] <- "home"
+# 
+# index <- which(!(colnames(X_pred) %in%  X_6_years_colnames))
+# if(length(index) > 0){
+#   X_pred <- X_pred[,-index]
+# }
+# 
+# X_pred_glm <- X_pred
+# 
+# X_pred_glmnet <- as.matrix(X_pred)
+# 
+# ######
 
 ## penality.factor vorbereiten
 sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
@@ -492,25 +491,24 @@ gc()
 
 ## Modelle fuer 6 Jahre Trainingsdaten
 
-t <- Sys.time()
-model5_glm <- glm(y ~ -1 + ., data = X_glm, family = binomial, weights = w_5)
-Sys.time() - t
+# t <- Sys.time()
+model5_glm <- glm(y ~ -1 + ., data = X_glm, family = binomial, 
+                  #weights = w_5
+                  )
+# Sys.time() - t
 
-t <- Sys.time()
+# t <- Sys.time()
 model5_glmnet <- glmnet(x = X_glmnet,
                  y = y,
                  intercept = FALSE,
                  family = binomial(),
-                 weights = w_5,
+                 #weights = w_5,
                  lambda = 1e-15,
                  standardize = FALSE,
                  alpha = 0,
                  penality.factor = penality_vector
 )
-Sys.time() - t
-
-save(model5_glmnet, model5_glm, file = "models.RData")
-
+# Sys.time() - t
 
 # pred_outcome5 <- unname(predict(model5, newx = X_pred, type = 'response'))
 # rm(w_5, model5)
@@ -550,17 +548,4 @@ gc()
 ################################################################################
 
 #}
-
-
-
-
-
-
-
-
-##############################################################################
-
-
-
-
 
