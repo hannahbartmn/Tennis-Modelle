@@ -311,7 +311,7 @@ data$date_difference <- as.numeric(temp_date - data$tourney_date)
 
 ## alle Turniere 6 Jahre vor dem zu schaetzenden Turnier auswaehlen
 temp_id_6_years <- data[(data$tourney_date < temp_date &
-                           data$tourney_date > temp_date - 365*0.5), 1] 
+                           data$tourney_date > temp_date - 365*0.2), 1] 
 temp_subset_6_years <- data[data$tourney_id %in% temp_id_6_years, ]
 na_surface <- is.na(temp_subset_6_years$surface)
 temp_subset_6_years <- temp_subset_6_years[!na_surface,]
@@ -399,12 +399,9 @@ if(length(index) > 0){
   X <- X[,-index]
 } 
 
-X <- scale(X)
+# X <- scale(X)
 
-X_glm <- as.data.frame(X)
-
-# in matrix umwandeln fuer glmnet
-X_glmnet <- as.matrix(X)
+X <- as.matrix(X)
 
 X_6_years_colnames <- colnames(X)
 
@@ -494,17 +491,15 @@ gc()
 ## Modelle fuer 6 Jahre Trainingsdaten
 
 # t <- Sys.time()
-model5_glm <- glm(y ~ -1 + ., data = X_glm, family = binomial, 
-                  #weights = w_5
-                  )
+model5_glm <- glm(y ~ X, family = binomial, weights = w_5)
 # Sys.time() - t
 
 # t <- Sys.time()
-model5_glmnet <- glmnet(x = X_glmnet,
+model5_glmnet <- glmnet(x = X,
                  y = y,
-                 intercept = FALSE,
+                 intercept = TRUE,
                  family = binomial(),
-                 #weights = w_5,
+                 weights = w_5,
                  lambda = 1e-15,
                  standardize = FALSE,
                  alpha = 0,
@@ -556,11 +551,14 @@ str(model5_glmnet$beta)
 
 model5_glm$coefficients
 model5_glmnet$beta@Dimnames[[1]][1:10]
+model5_glmnet$a0
 
 coef_glm <- data.frame(name = names(model5_glm$coefficients), coef_glm = as.vector(model5_glm$coefficients))
-coef_glmnet <- data.frame(name = model5_glmnet$beta@Dimnames[[1]], coef_glmnet = as.vector(model5_glmnet$beta)) 
+coef_glmnet <- data.frame(name = c("(Intercept)", model5_glmnet$beta@Dimnames[[1]]), 
+                          coef_glmnet = c(model5_glmnet$a0, as.vector(model5_glmnet$beta)))
 
-coef_glm$name <- gsub("`", "", coef_glm$name)
+coef_glm$name <- sub("^X", "", coef_glm$name)
+# coef_glm$name <- gsub("`", "", coef_glm$name)
 
 coef <- merge(coef_glm, coef_glmnet)
 
