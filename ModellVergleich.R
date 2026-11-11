@@ -317,14 +317,16 @@ na_surface <- is.na(temp_subset_6_years$surface)
 temp_subset_6_years <- temp_subset_6_years[!na_surface,]
 
 
-## Outlier bestimmen
+## Outlier nach Untergrund bestimmen
+temp_subset_6_years$player_id.surface <- paste0(temp_subset_6_years$player_id, ".", temp_subset_6_years$surface)
+temp_subset_6_years$opponent_id.surface <- paste0(temp_subset_6_years$opponent_id, ".", temp_subset_6_years$surface)
 
 # alle Spiele aus Perspektive von Spieler 1
-df_player <- temp_subset_6_years[, c("player_name", "win")]
+df_player <- temp_subset_6_years[, c("player_id.surface", "win")]
 names(df_player) <- c("name", "win")
 
 # alle Spiele aus der Perspektive von Spieler 2 (win = inverted)
-df_opponent <- temp_subset_6_years[, c("opponent_name", "win")]
+df_opponent <- temp_subset_6_years[, c("opponent_id.surface", "win")]
 df_opponent$win <- 1 - df_opponent$win
 names(df_opponent) <- c("name", "win")
 
@@ -340,11 +342,11 @@ outlier <- player_stats$name[player_stats$win == 1]
 
 
 ## Outlier im Datensatz ueberschreiben mit einer gemeinsamen ID
-temp_subset_6_years[temp_subset_6_years$player_name %in% outlier, "player_id"] <- 400000 
-temp_subset_6_years[temp_subset_6_years$player_name %in% outlier, "player_name"] <- "Outlier" 
+temp_subset_6_years[temp_subset_6_years$player_id.surface %in% outlier, "player_id"] <- 400000 
+temp_subset_6_years[temp_subset_6_years$player_id == 400000, "player_name"] <- "Outlier" 
 
-temp_subset_6_years[temp_subset_6_years$opponent_name %in% outlier, "opponent_id"] <- 400000
-temp_subset_6_years[temp_subset_6_years$opponent_name %in% outlier, "opponent_name"] <- "Outlier"
+temp_subset_6_years[temp_subset_6_years$opponent_id.surface %in% outlier, "opponent_id"] <- 400000
+temp_subset_6_years[temp_subset_6_years$opponent_id == 400000, "opponent_name"] <- "Outlier"
 
 
 ## alle einzigartigen Spieler  
