@@ -15,13 +15,10 @@ level_weight <- function(lv){
 #####
 
 ## Pakete
-
 library(tidyverse)
 # library(glmnet)
 
-
 ## Daten
-
 load("data.RData")
 
 ##### 
@@ -42,13 +39,9 @@ all_tourney_dates <- unique(data[data$tourney_id %in% all_tourneys, "tourney_dat
 
 ## Modellvorbereitung
 
-# j <- 5
-# j <- as.integer(Sys.getenv("PBS_ARRAYID"))
-J <- c(42, 44, 47, 53, 56)
+j <- as.integer(Sys.getenv("PBS_ARRAYID"))
 
-j <- J[5]
-
-for(j in J){
+# for(j in J){
   
   cat(j, "at", paste0(Sys.time()), "\n")
 
@@ -117,13 +110,6 @@ for(j in J){
                                             labels = player_info_4_years$name)
   temp_subset_4_years$opponent_id <-  relevel(temp_subset_4_years$opponent_id, "Outlier")
   
-  # Spiele entfernen, in denen Outlier gegen outlier spielt
-  index <- which(temp_subset_4_years$player_id == "Outlier" & temp_subset_4_years$opponent_id == "Outlier")
-  if(length(index) > 0){
-    temp_subset_4_years <- temp_subset_4_years[-index,]
-  }
-  
-  
   ## Designmatrix aufstellen
   X_1 <- model.matrix(~ -1 + player_id, data = temp_subset_4_years)
   X_2 <- model.matrix(~ -1 + opponent_id, data = temp_subset_4_years) 
@@ -134,13 +120,6 @@ for(j in J){
   
   # Outlier SPalte entfernen
   X <- X[,-2]
-  
-  # in matrix umwandeln fuer glmnet
-  # X <- as.matrix(X)
-  
-  X_4_years_colnames <- colnames(X)
-  
-  X <- as.data.frame(X)
   
   ######
   
@@ -183,14 +162,13 @@ for(j in J){
   X_pred <- cbind(pred_subset$home_tourney, X_1_pred-X_2_pred)
   colnames(X_pred)[1] <- "home"
   
-  index <- which(!(colnames(X_pred) %in%  X_4_years_colnames))
+  index <- which(!(colnames(X_pred) %in%  colnames(X)))
   if(length(index) > 0){
     X_pred <- X_pred[,-index]
   }
   
-  # X_pred <- as.matrix(X_pred)
-  X_pred <- as.data.frame(X_pred)
-  
+  X_pred <- data.frame(X = I(X_pred))
+
   ######
   
   ## weights bestimmen
@@ -208,8 +186,7 @@ for(j in J){
   rm(na_surface, temp_id_4_years, df_player, df_opponent, all_matches, player_stats,
      X_1, X_2, index, outlier, temp_subset_4_years, w_level_4_years, 
      w_time_4_years_1_halfperiod, w_time_4_years_2_halfperiod, w_time_4_years_3_halfperiod,
-     X_1_pred, X_2_pred, not_listed_opponent, not_listed_player, 
-     X_4_years_colnames, player_info_4_years)
+     X_1_pred, X_2_pred, not_listed_opponent, not_listed_player, player_info_4_years)
   
   gc()
   
@@ -217,25 +194,25 @@ for(j in J){
   
   ## Modelle mit 4 Jahren Trainingsdaten
   
-  model1 <- glm(y ~ -1 + ., data = X, family = binomial)
+  model1 <- glm(y ~ -1 + X, family = binomial)
   pred_outcome1 <- predict(model1, newdata = X_pred, type = 'response')
   rm(model1)
   
   gc()
   
-  model2 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_2)
+  model2 <- glm(y ~ -1 + X, family = binomial, weights = w_2)
   pred_outcome2 <- predict(model2, newdata = X_pred, type = 'response')
   rm(model2, w_2)
   
   gc()
   
-  model3 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_3)
+  model3 <- glm(y ~ -1 + X, family = binomial, weights = w_3)
   pred_outcome3 <- predict(model3, newdata = X_pred, type = 'response')
   rm(model3, w_3)
   
   gc()
   
-  model4 <- model4 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_4)
+  model4 <- model4 <- glm(y ~ -1 + X, family = binomial, weights = w_4)
   pred_outcome4 <- predict(model4, newdata = X_pred, type = 'response')
   rm(model4, w_4, X, y, X_pred)
   
@@ -300,14 +277,7 @@ for(j in J){
                                             levels = player_info_6_years$id, 
                                             labels = player_info_6_years$name)
   temp_subset_6_years$opponent_id <-  relevel(temp_subset_6_years$opponent_id, "Outlier")
-  
-  # Spiele entfernen, in denen Outlier gegen outlier spielt
-  index <- which(temp_subset_6_years$player_id == "Outlier" & temp_subset_6_years$opponent_id == "Outlier")
-  if(length(index) > 0){
-    temp_subset_6_years <- temp_subset_6_years[-index,]
-  }
-  
-  
+
   ## Designmatrix aufstellen
   X_1 <- model.matrix(~ -1 + player_id, data = temp_subset_6_years)
   X_2 <- model.matrix(~ -1 + opponent_id, data = temp_subset_6_years) 
@@ -318,13 +288,6 @@ for(j in J){
   
   # Outlier SPalten entfernen
   X <- X[,-2]
-  
-  # in matrix umwandeln fuer glmnet
-  # X <- as.matrix(X)
-  
-  X_6_years_colnames <- colnames(X)
-  
-  X <- as.data.frame(X)
   
   ######
   
@@ -367,14 +330,12 @@ for(j in J){
   X_pred <- cbind(pred_subset$home_tourney, X_1_pred-X_2_pred)
   colnames(X_pred)[1] <- "home"
   
-  index <- which(!(colnames(X_pred) %in%  X_6_years_colnames))
+  index <- which(!(colnames(X_pred) %in%  colnames(X)))
   if(length(index) > 0){
     X_pred <- X_pred[,-index]
   }
 
-  # X_pred <- as.matrix(X_pred)
-  
-  X_pred <- as.data.frame(X_pred)
+  X_pred <- data.frame(X = I(X_pred))
   
   ######
   
@@ -393,8 +354,7 @@ for(j in J){
   rm(na_surface, temp_id_6_years, df_player, df_opponent, all_matches, player_stats,
      X_1, X_2, index, outlier, temp_subset_6_years, w_level_6_years, 
      w_time_6_years_1_halfperiod, w_time_6_years_3_halfperiod, w_time_6_years_5_halfperiod,
-     X_1_pred, X_2_pred, not_listed_opponent, not_listed_player, 
-     X_6_years_colnames, player_info_6_years)
+     X_1_pred, X_2_pred, not_listed_opponent, not_listed_player, player_info_6_years)
   
   gc()
   
@@ -402,19 +362,19 @@ for(j in J){
   
   ## Modelle fuer 6 Jahre Trainingsdaten
   
-  model5 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_5)
+  model5 <- glm(y ~ -1 + X, family = binomial, weights = w_5)
   pred_outcome5 <- predict(model5, newdata = X_pred, type = 'response')
   rm(w_5, model5)
   
   gc()
   
-  model6 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_6)
+  model6 <- glm(y ~ -1 + X, family = binomial, weights = w_6)
   pred_outcome6 <- predict(model6, newdata = X_pred, type = 'response')
   rm(w_6, model6)
   
   gc()
   
-  model7 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_7)
+  model7 <- glm(y ~ -1 + X, family = binomial, weights = w_7)
   pred_outcome7 <- predict(model7, newdata = X_pred, type = 'response')
   rm(w_7, model7, X, y)
   
@@ -431,10 +391,10 @@ for(j in J){
                            pred_outcome6 = pred_outcome6,
                            pred_outcome7 = pred_outcome7)
   
-  save(prediction, file = paste0("original_model_prediction_", j, ".RData")) #id hier hinzufuegen
+  save(prediction, file = paste0("glm_basis_model_prediction_", j, ".RData")) #id hier hinzufuegen
   
   gc()
-}
+# }
   
   
   

@@ -15,13 +15,10 @@ level_weight <- function(lv){
 #####
 
 ## Pakete
-
 library(tidyverse)
 # library(glmnet)
 
-
 ## Daten
-
 # setwd("C:/Users/bartm/Documents/HKS/Paper")
 load("data.RData")
 
@@ -43,14 +40,11 @@ all_tourney_dates <- unique(data[data$tourney_id %in% all_tourneys, "tourney_dat
 
 ## Modellvorbereitung
 
-# j <- 56
 j <- as.integer(Sys.getenv("PBS_ARRAYID"))
 
-# J <- c(42:45, 47, 49:56, 58, 60:61)
-
-# for(j in 1:length(all_tourney_dates)){
 # for(j in J){
   cat(j, "at", paste0(Sys.time()), "\n")
+  
   # Datum des j-ten Turniers 
   temp_date <- all_tourney_dates[j]
   
@@ -97,7 +91,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   temp_subset_4_years[temp_subset_4_years$opponent_name %in% outlier, "opponent_id"] <- 400000
   temp_subset_4_years[temp_subset_4_years$opponent_name %in% outlier, "opponent_name"] <- "Outlier"
   
-
+  
   ## alle einzigartigen Spieler  
   player_info_4_years <- data.frame(id = temp_subset_4_years$player_id, 
                                     name = temp_subset_4_years$player_name)
@@ -116,13 +110,6 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
                                             labels = player_info_4_years$name)
   temp_subset_4_years$opponent_id <-  relevel(temp_subset_4_years$opponent_id, "Outlier")
   
-  # Spiele entfernen, in denen Outlier gegen outlier spielt
-  index <- which(temp_subset_4_years$player_id == "Outlier" & temp_subset_4_years$opponent_id == "Outlier")
-  if(length(index) > 0){
-    temp_subset_4_years <- temp_subset_4_years[-index,]
-  }
-  
-  
   ## Designmatrix aufstellen
   X_1 <- model.matrix(~ -1 + player_id, data = temp_subset_4_years)
   X_2 <- model.matrix(~ -1 + opponent_id, data = temp_subset_4_years) 
@@ -133,21 +120,9 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   y <- as.numeric(temp_subset_4_years$win) # numeric fuer glmnet
   
   # Outlier SPalte entfernen
-  X <- X[,-4]
+  X <- X[,-2]
   
-  # Entferne Nullspalten 
-  index <- apply(X, 2, function(x) length(table(x)))
-  index <- unname(which(index == 1))
-  if(length(index) > 0){
-    X <- X[,-index]
-  }
-  
-  X <- data.frame(X)
-  
-  # in matrix umwandeln fuer glmnet
-  # X <- as.matrix(X)
-  
-  X_4_years_colnames <- colnames(X)
+  X <- as.matrix(X)
   
   ######
   
@@ -156,7 +131,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   pred_subset <- data[data$tourney_date == all_tourney_dates[j],]
   
   # true outcome abspeichern
-  true_outcome <- pred_subset$win
+  true_outcome <- as.numeric(pred_subset$win)
   
   # Spieler ohne Parameterschaetzung werden mit Outlier Parameter geschaetzt
   not_listed_player <- which(!(pred_subset$player_id %in% player_info_4_years$id))
@@ -182,7 +157,7 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   pred_subset$opponent_id <- factor(pred_subset$opponent_id, 
                                     levels = player_info_4_years$id, 
                                     labels = player_info_4_years$name)
-  pred_subset$opponent_id <- relevel(pred_subset$opponent_id, "Outlier")
+  pred_subset$opponent_id <-  relevel(pred_subset$opponent_id, "Outlier")
   
   ## Designmatrix aufstellen
   X_1_pred <- model.matrix(~ -1 + player_id, data = pred_subset)
@@ -191,25 +166,16 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   X_pred <- cbind(X_beta_pred, X_1_pred-X_2_pred)
   colnames(X_pred)[1] <- "home"
   
-  X_pred <- data.frame(X_pred)
-  
-  index <- which(!(colnames(X_pred) %in%  X_4_years_colnames))
+  index <- which(!(colnames(X_pred) %in%  colnames(X)))
   if(length(index) > 0){
     X_pred <- X_pred[,-index]
   }
   
-  # X_pred <- as.matrix(X_pred)
+  X_pred <- as.matrix(X_pred)
+  
+  X_pred <- data.frame(X = I(X_pred))
   
   ######
-  
-  ## penality.factor vorbereiten
-  sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
-                                  any("H2H" %in% colnames(X)),
-                                  any("H2H_surface" %in% colnames(X))))
-  
-  penality_vector <- c(rep(0, sum_excluded_variables),
-                       rep(1, ncol(X) - sum_excluded_variables))
-  
   
   ## weights bestimmen
   w_level_4_years <- sapply(temp_subset_4_years$tourney_level, level_weight)
@@ -224,10 +190,9 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   # data, pred_subset nicht entfernen!
   rm(na_surface, temp_id_4_years, df_player, df_opponent, all_matches, player_stats,
-     X_beta, X_1, X_2, index, outlier, temp_subset_4_years, w_level_4_years, 
+     X_1, X_2, index, outlier, temp_subset_4_years, w_level_4_years, 
      w_time_4_years_1_halfperiod, w_time_4_years_2_halfperiod, w_time_4_years_3_halfperiod,
-     X_1_pred, X_2_pred, X_beta_pred, not_listed_opponent, not_listed_player, 
-     X_4_years_colnames, player_info_4_years, sum_excluded_variables)
+     X_1_pred, X_2_pred, not_listed_opponent, not_listed_player, player_info_4_years)
   
   gc()
   
@@ -235,36 +200,37 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   ## Modelle mit 4 Jahren Trainingsdaten
   
-  model1 <- glm(y ~ -1 + ., data = X, family = binomial)
+  model1 <- glm(y ~ -1 + X, family = binomial)
   pred_outcome1 <- predict(model1, newdata = X_pred, type = 'response')
   rm(model1)
   
   gc()
   
-  model2 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_2)
+  model2 <- glm(y ~ -1 + X, family = binomial, weights = w_2)
   pred_outcome2 <- predict(model2, newdata = X_pred, type = 'response')
   rm(model2, w_2)
   
   gc()
   
-  model3 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_3)
+  model3 <- glm(y ~ -1 + X, family = binomial, weights = w_3)
   pred_outcome3 <- predict(model3, newdata = X_pred, type = 'response')
   rm(model3, w_3)
   
   gc()
   
-  model4 <- model4 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_4)
+  model4 <- model4 <- glm(y ~ -1 + X, family = binomial, weights = w_4)
   pred_outcome4 <- predict(model4, newdata = X_pred, type = 'response')
   rm(model4, w_4, X, y, X_pred)
   
   gc()
   
   
+  
   #####  models with 6 years training data #######################################
   
   ## alle Turniere 6 Jahre vor dem zu schaetzenden Turnier auswaehlen
   temp_id_6_years <- data[(data$tourney_date < temp_date &
-                            data$tourney_date > temp_date - 365*6), 1] 
+                             data$tourney_date > temp_date - 365*6), 1] 
   temp_subset_6_years <- data[data$tourney_id %in% temp_id_6_years, ]
   na_surface <- is.na(temp_subset_6_years$surface)
   temp_subset_6_years <- temp_subset_6_years[!na_surface,]
@@ -318,13 +284,6 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
                                             labels = player_info_6_years$name)
   temp_subset_6_years$opponent_id <-  relevel(temp_subset_6_years$opponent_id, "Outlier")
   
-  # Spiele entfernen, in denen Outlier gegen outlier spielt
-  index <- which(temp_subset_6_years$player_id == "Outlier" & temp_subset_6_years$opponent_id == "Outlier")
-  if(length(index) > 0){
-    temp_subset_6_years <- temp_subset_6_years[-index,]
-  }
-  
-  
   ## Designmatrix aufstellen
   X_1 <- model.matrix(~ -1 + player_id, data = temp_subset_6_years)
   X_2 <- model.matrix(~ -1 + opponent_id, data = temp_subset_6_years) 
@@ -334,22 +293,10 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   y <- as.numeric(temp_subset_6_years$win) # numeric fuer glmnet
   
-  # Outlier SPalte entfernen
-  X <- X[,-4]
+  # Outlier SPalten entfernen
+  X <- X[,-2]
   
-  # Entferne Nullspalten 
-  index <- apply(X, 2, function(x) length(table(x)))
-  index <- unname(which(index == 1))
-  if(length(index) > 0){
-    X <- X[,-index]
-  } 
-  
-  X <- data.frame(X)
-  
-  # in matrix umwandeln fuer glmnet
-  # X <- as.matrix(X)
-  
-  X_6_years_colnames <- colnames(X)
+  X <- as.matrix(X)
   
   ######
   
@@ -393,22 +340,16 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   X_pred <- cbind(X_beta_pred, X_1_pred-X_2_pred)
   colnames(X_pred)[1] <- "home"
   
-  X_pred <- data.frame(X_pred)
-  
-  index <- which(!(colnames(X_pred) %in%  X_6_years_colnames))
+  index <- which(!(colnames(X_pred) %in%  colnames(X)))
   if(length(index) > 0){
     X_pred <- X_pred[,-index]
   }
   
-  ######
+  X_pred <- as.matrix(X_pred)
   
-  ## penality.factor vorbereiten
-  # sum_excluded_variables <- sum(c(any("home" %in% colnames(X)), 
-  #                                 any("H2H" %in% colnames(X)),
-  #                                 any("H2H_surface" %in% colnames(X))))
-  # 
-  # penality_vector <- c(rep(0, sum_excluded_variables),
-  #                      rep(1, ncol(X) - sum_excluded_variables))
+  X_pred <- data.frame(X = I(X_pred))
+  
+  ######
   
   ## weights bestimmen
   w_level_6_years <- sapply(temp_subset_6_years$tourney_level, level_weight)
@@ -423,10 +364,9 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   # data, pred_subset nicht entfernen!
   rm(na_surface, temp_id_6_years, df_player, df_opponent, all_matches, player_stats,
-     X_beta, X_1, X_2, outlier_col, index, outlier, temp_subset_6_years, w_level_6_years, 
+     X_1, X_2, index, outlier, temp_subset_6_years, w_level_6_years, 
      w_time_6_years_1_halfperiod, w_time_6_years_3_halfperiod, w_time_6_years_5_halfperiod,
-     X_1_pred, X_2_pred, X_beta_pred, not_listed_opponent, not_listed_player, 
-     X_6_years_colnames, player_info_6_years)
+     X_1_pred, X_2_pred, not_listed_opponent, not_listed_player, player_info_6_years)
   
   gc()
   
@@ -434,22 +374,22 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   
   ## Modelle fuer 6 Jahre Trainingsdaten
   
-  model5 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_5)
+  model5 <- glm(y ~ -1 + X, family = binomial, weights = w_5)
   pred_outcome5 <- predict(model5, newdata = X_pred, type = 'response')
   rm(w_5, model5)
   
   gc()
   
-  model6 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_6)
+  model6 <- glm(y ~ -1 + X, family = binomial, weights = w_6)
   pred_outcome6 <- predict(model6, newdata = X_pred, type = 'response')
   rm(w_6, model6)
   
   gc()
   
-  model7 <- glm(y ~ -1 + ., data = X, family = binomial, weights = w_7)
+  model7 <- glm(y ~ -1 + X, family = binomial, weights = w_7)
   pred_outcome7 <- predict(model7, newdata = X_pred, type = 'response')
   rm(w_7, model7, X, y)
-
+  
   gc()
   
   ################################################################################
@@ -468,6 +408,6 @@ j <- as.integer(Sys.getenv("PBS_ARRAYID"))
   gc()
 # }
 
-  ##############################################################################
-  
-  
+##############################################################################
+
+
